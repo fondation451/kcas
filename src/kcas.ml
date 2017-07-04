@@ -145,11 +145,34 @@ let rec get a =
   |_ -> assert false
 ;;
 
-let kCAS c_l =
+let bad_kcas_value = -16;;
+
+let rec kcas_with_tsx l =
+  match l with
+  |(CAS(r, o, n))::t -> begin
+    match !r with
+    |WORD(_) as v ->
+      if st_eq v o then begin
+        r := n;
+        kcas_with_tsx t
+      end else
+        fallback bad_kcas_value
+    |_ -> fallback 0
+  end
+  |[] -> ()
+;;
+
+let kcas_without_tsx c_l =
   match c_l with
   |[] -> true
   |[CAS(r, o, n) as c] -> ignore @@ get r; commit c
   |_ -> casn_proceed (mk_casn (ref UNDECIDED) c_l)
+;;
+
+let kCAS l =
+  atomically
+    (fun () -> kcas_with_tsx l)
+    (fun s -> if s <> bad_kcas_value then kcas_without_tsx l)
 ;;
 
 let try_map r f =
