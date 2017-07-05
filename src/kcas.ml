@@ -145,7 +145,7 @@ let rec get a =
   |_ -> assert false
 ;;
 
-let bad_kcas_value = -16;;
+let bad_kcas_value = 121;;
 
 let rec kcas_with_tsx l =
   match l with
@@ -156,10 +156,10 @@ let rec kcas_with_tsx l =
         r := n;
         kcas_with_tsx t
       end else
-        fallback bad_kcas_value
-    |_ -> fallback 0
+        xabort 100
+    |_ -> xabort 0
   end
-  |[] -> ()
+  |[] -> true
 ;;
 
 let kcas_without_tsx c_l =
@@ -172,7 +172,7 @@ let kcas_without_tsx c_l =
 let kCAS l =
   atomically
     (fun () -> kcas_with_tsx l)
-    (fun s -> if s <> bad_kcas_value then kcas_without_tsx l)
+    (fun s -> if s <> 100 then kcas_without_tsx l else false)
 ;;
 
 let try_map r f =
